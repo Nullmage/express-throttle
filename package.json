@@ -1,0 +1,37 @@
+{
+  "name": "express-throttle",
+  "version": "0.1.0",
+  "description": "Request throttling middleware for Express",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test/*.js",
+    "lint": "eslint lib test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GlurG/express-throttle.git"
+  },
+  "keywords": [
+    "throttle",
+    "request",
+    "express",
+    "middleware"
+  ],
+  "author": {
+    "name": "Martin Tittenberger",
+    "url": "https://github.com/GlurG"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GlurG/express-throttle/issues"
+  },
+  "homepage": "https://github.com/GlurG/express-throttle#readme",
+  "dependencies": {
+    "lru-cache": "^4.0.1"
+  },
+  "devDependencies": {
+    "express": "^4.14.0",
+    "supertest": "^1.2.0",
+    "tape": "^4.6.0"
+  }
+}

@@ -1,0 +1,15 @@
+{
+	"extends": "eslint:recommended",
+
+	"env": {
+        "node": true
+    },
+
+	"parserOptions": {
+		"sourceType": "module"
+	},
+
+    "rules": {
+        "semi": 2
+    }
+}
