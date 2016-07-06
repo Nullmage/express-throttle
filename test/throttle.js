@@ -56,7 +56,7 @@ test("make one request", t => {
 		res.status(200).end();
 	});
 
-	request(app).get("/").expect(200).end((err, res) => {
+	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
 		t.end();
 	});
@@ -76,9 +76,10 @@ test("custom store + make one request", t => {
 
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
-		var entry = store.get(res.body);
-		t.equal(entry.tokens, 4);
-		t.end();
+		store.get(res.body, (err, entry) => {
+			t.equal(entry.tokens, 4);
+			t.end();
+		});
 	});
 });
 
@@ -100,9 +101,10 @@ test("respect x-forwarded-for header", t => {
 	.set("x-forwarded-for", proxy_ip)
 	.end((err, res) => {
 		t.equal(res.status, 200);
-		var entry = store.get(proxy_ip);
-		t.equal(entry.tokens, 4);
-		t.end();
+		store.get(proxy_ip, (err, entry) => {
+			t.equal(entry.tokens, 4);
+			t.end();
+		});
 	});
 });
 
@@ -124,9 +126,10 @@ test("custom key function", t => {
 
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
-		var entry = store.get(custom_key);
-		t.equal(entry.tokens, 4);
-		t.end();
+		store.get(custom_key, (err, entry) => {
+			t.equal(entry.tokens, 4);
+			t.end();
+		});
 	});
 });
 
