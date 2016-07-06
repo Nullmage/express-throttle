@@ -46,10 +46,32 @@ test("fail to init...", t => {
 		st.throws(() => throttle(5, "x/hour"), new Error);
 		st.end();
 	});
+
+	t.test("...with 'key' not being a function", st => {
+		st.throws(() => throttle({ "burst": 5, "rate": "1/s", "key": 1 }), new Error);
+		st.end();
+	});
+
+	t.test("...with 'cost' not being a number or function", st => {
+		st.throws(() => throttle({ "burst": 5, "rate": "1/s", "cost": "5" }), new Error);
+		st.end();
+	});
+
+	t.test("...with 'on_throttled' not being a function", st => {
+		st.throws(() => throttle({ "burst": 5, "rate": "1/s", "on_throttled": "test" }), new Error);
+		st.end();
+	});
 });
 
-test("successfully init with 'burst' and 'rate'", t => {
-	t.doesNotThrow(() => throttle(5, "1/s"));
+test("successfully init", t => {
+	t.doesNotThrow(() => throttle({
+		"burst": 5,
+		"rate": "1/s",
+		"key": () => true,
+		"cost": () => true,
+		"on_throttled": () => true
+	}));
+	
 	t.end();
 });
 
