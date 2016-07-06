@@ -193,6 +193,63 @@ test("throttling (decimal rate)", t => {
 	}, 400);
 });
 
+test("custom cost", t => {
+	var app = express();
+	var store = new MemoryStore();
+
+	app.get("/", throttle({
+		"burst": 5,
+		"rate": "1/s",
+		"store": store,
+		"cost": 5
+	}), function(req, res) {
+		res.status(200).json(req.connection.remoteAddress);
+	});
+
+	request(app).get("/").end((err, res) => {
+		store.get(res.body, (err, entry) => {
+			t.equal(res.status, 200);
+			t.assert(close_to(entry.tokens, 0));
+			t.end();
+		});
+	});
+});
+
+test("custom cost function", t => {
+	var app = express();
+	var store = new MemoryStore();
+
+	app.get("/:admin", throttle({
+		"burst": 5,
+		"rate": "1/s",
+		"store": store,
+		"cost": function(req) {
+			if (req.params.admin == "yes") {
+				return 0;
+			} else {
+				return 5;
+			}
+		}
+	}), function(req, res) {
+		res.status(200).json(req.connection.remoteAddress);
+	});
+
+	request(app).get("/yes").end((err, res) => {
+		store.get(res.body, (err, entry) => {
+			t.equal(res.status, 200);
+			t.assert(close_to(entry.tokens, 5));
+
+			request(app).get("/no").end((err, res) => {
+				store.get(res.body, (err, entry) => {
+					t.equal(res.status, 200);
+					t.assert(close_to(entry.tokens, 0));
+					t.end();
+				});
+			});
+		});
+	});
+});
+
 test("custom on_throttled function", t => {
 	var app = express();
 	app.get("/", throttle({
