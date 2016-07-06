@@ -7,6 +7,10 @@ var request = require("supertest");
 var MemoryStore = require("../lib/memory-store");
 var throttle = require("../lib/throttle");
 
+function close_to(value, target, delta = 0.001) {
+	return Math.abs(value - target) < delta;
+}
+
 test("fail to init...", t => {
 	t.test("...without options", st => {
 		st.throws(throttle, new Error);
@@ -62,7 +66,7 @@ test("make one request", t => {
 	});
 });
 
-test("custom store + make one request", t => {
+test("custom store", t => {
 	var app = express();
 	var store = new MemoryStore();
 
@@ -77,7 +81,7 @@ test("custom store + make one request", t => {
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
 		store.get(res.body, (err, entry) => {
-			t.equal(entry.tokens, 4);
+			t.assert(close_to(entry.tokens, 4));
 			t.end();
 		});
 	});
@@ -92,7 +96,7 @@ test("respect x-forwarded-for header", t => {
 		"rate": "1/s",
 		"store": store
 	}), function(req, res) {
-		res.status(200).json(req.connection.remoteAddress);
+		res.status(200).json();
 	});
 
 	var proxy_ip = "123.123.123.123";
@@ -102,7 +106,7 @@ test("respect x-forwarded-for header", t => {
 	.end((err, res) => {
 		t.equal(res.status, 200);
 		store.get(proxy_ip, (err, entry) => {
-			t.equal(entry.tokens, 4);
+			t.assert(close_to(entry.tokens, 4));
 			t.end();
 		});
 	});
@@ -127,7 +131,7 @@ test("custom key function", t => {
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
 		store.get(custom_key, (err, entry) => {
-			t.equal(entry.tokens, 4);
+			t.assert(close_to(entry.tokens, 4));
 			t.end();
 		});
 	});
@@ -135,24 +139,64 @@ test("custom key function", t => {
 
 test("throttling", t => {
 	var app = express();
-	app.get("/", throttle(5, "1/s"), function(req, res) {
-		res.status(200).end();
+	var store = new MemoryStore();
+
+	app.get("/", throttle({
+		"burst": 1,
+		"rate": "1/s",
+		"store": store
+	}), function(req, res) {
+		res.status(200).json(req.connection.remoteAddress);
 	});
 
-	for (var i = 0; i < 5; ++i) {
-		request(app).get("/").end(() => true);
-	}
-	
+	request(app).get("/").end(() => true);
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 429);
-		t.end();
 	});
+
+	setTimeout(() => {
+		request(app).get("/").end((err, res) => {
+			store.get(res.body, (err, entry) => {
+				t.equal(res.status, 200);
+				t.assert(close_to(entry.tokens, 0));
+				t.end();
+			});
+		});
+	}, 1000);
+});
+
+test("throttling (decimal rate)", t => {
+	var app = express();
+	var store = new MemoryStore();
+
+	app.get("/", throttle({
+		"burst": 1,
+		"rate": "2.5/s",
+		"store": store
+	}), function(req, res) {
+		res.status(200).json(req.connection.remoteAddress);
+	});
+
+	request(app).get("/").end(() => true);
+	request(app).get("/").end((err, res) => {
+		t.equal(res.status, 429);
+	});
+
+	setTimeout(() => {
+		request(app).get("/").end((err, res) => {
+			store.get(res.body, (err, entry) => {
+				t.equal(res.status, 200);
+				t.assert(close_to(entry.tokens, 0));
+				t.end();
+			});
+		});
+	}, 400);
 });
 
 test("custom on_throttled function", t => {
 	var app = express();
 	app.get("/", throttle({
-		"burst": 5,
+		"burst": 1,
 		"rate": "1/s",
 		"on_throttled": function(req, res) {
 			res.status(429).json("slow down!");
@@ -161,10 +205,7 @@ test("custom on_throttled function", t => {
 		res.status(200).end();
 	});
 
-	for (var i = 0; i < 5; ++i) {
-		request(app).get("/").end(() => true);
-	}
-
+	request(app).get("/").end(() => true);
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 429);
 		t.equal(res.body, "slow down!");
