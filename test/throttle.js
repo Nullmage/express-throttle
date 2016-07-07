@@ -32,8 +32,18 @@ test("fail to init...", t => {
 		st.end();
 	});
 
+	t.test("...with invalid rate string", st => {
+		st.throws(() => throttle("1e6/h"), new Error);
+		st.end();
+	});
+
 	t.test("...with empty option object", st => {
 		st.throws(() => throttle({}), new Error);
+		st.end();
+	});
+
+	t.test("...with 'burst' not being a number", st => {
+		st.throws(() => throttle({ "rate": "1/s", "burst": "5" }), new Error);
 		st.end();
 	});
 
@@ -56,6 +66,15 @@ test("fail to init...", t => {
 test("init with...", t => {
 	t.test("...rate", st => {
 		st.doesNotThrow(() => throttle("1/s"));
+		st.doesNotThrow(() => throttle("1/sec"));
+		st.doesNotThrow(() => throttle("1/second"));
+		st.doesNotThrow(() => throttle("1/m"));
+		st.doesNotThrow(() => throttle("1/min"));
+		st.doesNotThrow(() => throttle("1/minute"));
+		st.doesNotThrow(() => throttle("1/h"));
+		st.doesNotThrow(() => throttle("1/hour"));
+		st.doesNotThrow(() => throttle("1/d"));
+		st.doesNotThrow(() => throttle("1/day"));
 		st.end();
 	});
 
@@ -128,15 +147,53 @@ test("throttle request...", t => {
 	});
 });
 
-test("custom store", t => {
-	var store = new MemoryStore();
-	var app = create_app({ "rate": "1/s", "store": store });
+test("custom store...", t => {
+	t.test("...that fails to retrieve", st => {
+		function FailStore() { }
+		FailStore.prototype.get = function(key, callback) {
+			callback(new Error("failed to get"));
+		}
 
-	request(app).get("/").end((err, res) => {
-		t.equal(res.status, 200);
-		store.get(res.body, (err, entry) => {
-			t.ok(entry);
-			t.end();
+		// No need to implement set, as we won't reach that code
+		var app = express();
+		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }), function(err, req, res, next) {
+			st.assert(err instanceof Error);
+			res.status(500).end();
+		});
+
+		request(app).get("/").end((err, res) => {
+			st.end();
+		});
+	});
+
+	t.test("...that fails to save", st => {
+		function FailStore() { }
+		FailStore.prototype.get = function(key, callback) { callback(null, {}); }
+		FailStore.prototype.set = function(key, value, callback) {
+			callback(new Error("failed to set"));
+		}
+
+		var app = express();
+		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }), function(err, req, res, next) {
+			st.assert(err instanceof Error);
+			res.status(500).end();
+		});
+
+		request(app).get("/").end((err, res) => {
+			st.end();
+		});
+	});
+
+	t.test("...that works", st => {
+		var store = new MemoryStore();
+		var app = create_app({ "rate": "1/s", "store": store });
+
+		request(app).get("/").end((err, res) => {
+			t.equal(res.status, 200);
+			store.get(res.body, (err, entry) => {
+				t.ok(entry);
+				t.end();
+			});
 		});
 	});
 });
