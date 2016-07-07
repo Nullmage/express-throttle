@@ -77,7 +77,7 @@ test("passthrough request...", t => {
 		return function(err, res) {
 			st.equal(res.status, 200);
 			st.end();
-		}
+		};
 	}
 
 	t.test("...rate (integer)", st => {
@@ -104,7 +104,7 @@ test("throttle request...", t => {
 		return function(err, res) {
 			st.equal(res.status, 429);
 			st.end();
-		}
+		};
 	}
 
 	t.test("...rate (integer)", st => {
@@ -130,7 +130,7 @@ test("throttle request...", t => {
 
 test("custom store", t => {
 	var store = new MemoryStore();
-	var app = create_app({ "rate": "1/s", "store": store })
+	var app = create_app({ "rate": "1/s", "store": store });
 
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
@@ -161,7 +161,7 @@ test("custom key function", t => {
 	var app = create_app({
 		"rate": "1/s",
 		"store": store,
-		"key": function() { return custom_key }
+		"key": function() { return custom_key; }
 	});
 
 	request(app).get("/").end((err, res) => {
