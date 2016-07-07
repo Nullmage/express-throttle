@@ -1,3 +1,3 @@
 "use strict";
 
-module.exports = require("./libs/throttle");
+module.exports = require("./lib/throttle");
