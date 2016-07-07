@@ -114,7 +114,7 @@ test("passthrough request...", t => {
 		request(app).get("/").end(() => true);
 		setTimeout(() => {
 			request(app).get("/").end(verify(st));
-		}, 1000);
+		}, 1050); // add 50ms to allow some margin for error
 	});
 });
 
@@ -152,36 +152,34 @@ test("custom store...", t => {
 		function FailStore() { }
 		FailStore.prototype.get = function(key, callback) {
 			callback(new Error("failed to get"));
-		}
+		};
 
 		// No need to implement set, as we won't reach that code
 		var app = express();
-		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }), function(err, req, res, next) {
+		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }),
+		function(err, req, res, next) { // eslint-disable-line no-unused-vars
 			st.assert(err instanceof Error);
 			res.status(500).end();
 		});
 
-		request(app).get("/").end((err, res) => {
-			st.end();
-		});
+		request(app).get("/").end(() => st.end());
 	});
 
 	t.test("...that fails to save", st => {
 		function FailStore() { }
-		FailStore.prototype.get = function(key, callback) { callback(null, {}); }
+		FailStore.prototype.get = function(key, callback) { callback(null, {}); };
 		FailStore.prototype.set = function(key, value, callback) {
 			callback(new Error("failed to set"));
-		}
+		};
 
 		var app = express();
-		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }), function(err, req, res, next) {
+		app.get("/", throttle({ "rate": "1/s", "store": new FailStore() }),
+		function(err, req, res, next) { // eslint-disable-line no-unused-vars
 			st.assert(err instanceof Error);
 			res.status(500).end();
 		});
 
-		request(app).get("/").end((err, res) => {
-			st.end();
-		});
+		request(app).get("/").end(() => st.end());
 	});
 
 	t.test("...that works", st => {
@@ -189,10 +187,10 @@ test("custom store...", t => {
 		var app = create_app({ "rate": "1/s", "store": store });
 
 		request(app).get("/").end((err, res) => {
-			t.equal(res.status, 200);
+			st.equal(res.status, 200);
 			store.get(res.body, (err, entry) => {
-				t.ok(entry);
-				t.end();
+				st.ok(entry);
+				st.end();
 			});
 		});
 	});
