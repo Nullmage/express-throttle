@@ -9,7 +9,16 @@ $ npm install express-throttle
 
 ## Implementation
 
-The throttling is done using the canonical [token bucket](https://en.wikipedia.org/wiki/Token_bucket) algorithm, where tokens are "refilled" in a sliding window manner (as opposed to a fixed time interval). This means that if we set maximum rate of 10 requests / minute, a client will not be able to send 10 requests 0:59, and 10 more 1:01. However, if the client sends 10 requests at 0:30, he will be able to send a new request at 0:36 (as tokens are regenerated continuously 1 every 6 seconds).
+The throttling is done using the canonical [token bucket](https://en.wikipedia.org/wiki/Token_bucket) algorithm, where tokens are "refilled" in a sliding window manner (as opposed to a fixed time interval). This means that if we a set maximum rate of 10 requests / minute, a client will not be able to send 10 requests 0:59, and 10 more 1:01. However, if the client sends 10 requests at 0:30, he will be able to send a new request at 0:36 (since tokens are refilled continuously 1 every 6 seconds).
+
+## Limitations
+
+By default, throttling data is stored in memory and is thus not shared between multiple processes. If your application is behind a load balancer which distributes traffic amoung several node processes, then throttling will be applied per process, which is generally not what you want (unless you can ensure that a client always hits the same process). It is possible to customize the storage so that the throttling data gets saved to a shared backend (e.g Redis). However, the current implementation contains a race-condition and will likely fail (erroneously allow/block certain requests) under high load. My plan is to address this shortcoming in future versions.
+
+**TL;DR** - Use this package in production at your own risk, beware of the limitations.
+* If you are running node as single process = you should be fine
+* If you are running node as multiple processes = be aware that throttling is done per process
+* If you have configured to use an external backend = some requests may erroneously be throttled (or passed through) under high load conditions
 
 ## Examples
 
