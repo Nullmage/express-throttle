@@ -39,8 +39,8 @@ app.post("/search", throttle({ "rate": "5/s", "burst": 10 }), function(req, res,
   // ...
 });
   
-// Decimal values for rate values are allowed
-app.post("/search", throttle({ "rate": "0.5/s", "burst": 5 }), function(req, res, next) {
+// "Half" requests are supported as well
+app.post("/search", throttle({ "rate": "1/2s", "burst": 5 }), function(req, res, next) {
   // ...
 });
 ```
@@ -99,8 +99,9 @@ var options = {
   "burst": 10,
   "on_throttled": function(req, res) {
     // Possible course of actions:
-    // 1) Add client ip address to a ban list
-    // 2) Send back more information
+    // 1) Log request
+    // 2) Add client ip address to a ban list
+    // 3) Send back more information
     res.set("X-Rate-Limit-Limit", 5);
     res.status(503).send("System overloaded, try again at a later time.");
   }
@@ -139,11 +140,9 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 ## Options
 
-`rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *decimal/time-unit*
+`rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *X/Yt*
 
-*decimal*: A non-negative decimal value. This value is internally stored as a float, but scientific notation is not supported (e.g 10e2).
-
-*time-unit*: Any of the following: `s, sec, second, m, min, minute, h, hour, d, day`
+where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `s, sec, second, m, min, minute, h, hour, d, day` 
 
 `burst`: The number of requests that can be made at any rate. The burst quota is refilled with the specified `rate`.
 

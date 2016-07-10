@@ -32,8 +32,13 @@ test("fail to init...", t => {
 		st.end();
 	});
 
-	t.test("...with invalid rate string", st => {
-		st.throws(() => throttle("1e6/h"), new Error);
+	t.test("...with invalid rate string (float not allowed)", st => {
+		st.throws(() => throttle("1.0/h"), new Error);
+		st.end();
+	});
+
+	t.test("...with invalid rate string (float not allowed)", st => {
+		st.throws(() => throttle("1/2.0h"), new Error);
 		st.end();
 	});
 
@@ -66,15 +71,15 @@ test("fail to init...", t => {
 test("init with...", t => {
 	t.test("...rate", st => {
 		st.doesNotThrow(() => throttle("1/s"));
-		st.doesNotThrow(() => throttle("1/sec"));
+		st.doesNotThrow(() => throttle("1/2sec"));
 		st.doesNotThrow(() => throttle("1/second"));
 		st.doesNotThrow(() => throttle("1/m"));
-		st.doesNotThrow(() => throttle("1/min"));
+		st.doesNotThrow(() => throttle("1/3min"));
 		st.doesNotThrow(() => throttle("1/minute"));
-		st.doesNotThrow(() => throttle("1/h"));
+		st.doesNotThrow(() => throttle("1/4h"));
 		st.doesNotThrow(() => throttle("1/hour"));
 		st.doesNotThrow(() => throttle("1/d"));
-		st.doesNotThrow(() => throttle("1/day"));
+		st.doesNotThrow(() => throttle("1/5day"));
 		st.end();
 	});
 
@@ -91,59 +96,59 @@ test("init with...", t => {
 	});
 });
 
-test("passthrough request...", t => {
-	function verify(st) {
+test("passthrough...", t => {
+	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 200);
-			st.end();
+
+			if (end) {
+				st.end();
+			}
 		};
 	}
 
-	t.test("...rate (integer)", st => {
-		var app = create_app("1/s");
+	t.test("...2 requests with enough gap @ rate 5/s", st => {
+		var app = create_app({ "rate": "5/s", "burst": 1 });
 		request(app).get("/").end(verify(st));
-	});
-
-	t.test("...rate (decimal)", st => {
-		var app = create_app("1.0/s");
-		request(app).get("/").end(verify(st));
-	});
-
-	t.test("...delayed", st => {
-		var app = create_app("1/s");
-		request(app).get("/").end(() => true);
 		setTimeout(() => {
-			request(app).get("/").end(verify(st));
-		}, 1050); // add 50ms to allow some margin for error
+			request(app).get("/").end(verify(st, true));
+		}, 250); // add 50ms to allow some margin for error
+	});
+
+	t.test("...2 requests with enough gap @ rate 5/2s", st => {
+		var app = create_app({ "rate": "5/2s", "burst": 1 });
+		request(app).get("/").end(verify(st));
+		setTimeout(() => {
+			request(app).get("/").end(verify(st, true));
+		}, 450);
 	});
 });
 
-test("throttle request...", t => {
-	function verify(st) {
+test("throttle...", t => {
+	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 429);
-			st.end();
+
+			if (end) {
+				st.end();
+			}
 		};
 	}
 
-	t.test("...rate (integer)", st => {
-		var app = create_app("1/s");
-		request(app).get("/").end(() => true);
-		request(app).get("/").end(verify(st));
-	});
-
-	t.test("...rate (decimal)", st => {
-		var app = create_app("1.0/s");
-		request(app).get("/").end(() => true);
-		request(app).get("/").end(verify(st));
-	});
-
-	t.test("...delayed", st => {
-		var app = create_app("1/s");
+	t.test("...2 requests without enough gap @ rate 5/s", st => {
+		var app = create_app({ "rate": "5/s", "burst": 1 });
 		request(app).get("/").end(() => true);
 		setTimeout(() => {
-			request(app).get("/").end(verify(st));
-		}, 900);
+			request(app).get("/").end(verify(st, true));
+		}, 150);
+	});
+
+	t.test("...2 requests without enough gap @ rate 5/2s", st => {
+		var app = create_app({ "rate": "5/2s", "burst": 1 });
+		request(app).get("/").end(() => true);
+		setTimeout(() => {
+			request(app).get("/").end(verify(st, true));
+		}, 350);
 	});
 });
 
