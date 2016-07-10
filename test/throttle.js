@@ -246,12 +246,16 @@ test("custom cost value", t => {
 		store.get(res.body, (err, entry) => {
 			t.equal(res.status, 200);
 			t.assert(close_to(entry.tokens, 2));
-			t.end();
+
+			request(app).get("/").end((err, res) => {
+				t.equal(res.status, 429);
+				t.end();
+			});
 		});
 	});
 });
 
-test("custom cost function", t => {
+test("custom cost function passthrough", t => {
 	var app = express();
 	var store = new MemoryStore();
 
@@ -279,7 +283,11 @@ test("custom cost function", t => {
 				store.get(res.body, (err, entry) => {
 					t.equal(res.status, 200);
 					t.assert(close_to(entry.tokens, 2));
-					t.end();
+					
+					request(app).get("/no").end((err, res) => {
+						t.equal(res.status, 429);
+						t.end();
+					});
 				});
 			});
 		});
