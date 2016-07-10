@@ -70,6 +70,7 @@ test("fail to init...", t => {
 
 test("init with...", t => {
 	t.test("...rate", st => {
+		st.doesNotThrow(() => throttle("1/200ms"));
 		st.doesNotThrow(() => throttle("1/s"));
 		st.doesNotThrow(() => throttle("1/2sec"));
 		st.doesNotThrow(() => throttle("1/second"));

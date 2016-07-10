@@ -142,7 +142,7 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 `rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *X/Yt*
 
-where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `s, sec, second, m, min, minute, h, hour, d, day` 
+where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, second, m, min, minute, h, hour, d, day` 
 
 `burst`: The number of requests that can be made at any rate. The burst quota is refilled with the specified `rate`.
 
