@@ -44,7 +44,7 @@ app.post("/search", throttle({ "rate": "5/s", "burst": 10 }), function(req, res,
   // ...
 });
   
-// "Half" requests are supported as well
+// "Half" requests are supported as well (1 request every other second)
 app.post("/search", throttle({ "rate": "1/2s", "burst": 5 }), function(req, res, next) {
   // ...
 });
@@ -101,16 +101,27 @@ Throttled requests will simply be responded with an empty 429 response. This can
 ```js
 var options = {
   "rate": "5/s",
-  "burst": 10,
-  "on_throttled": function(req, res) {
+  "on_throttled": function(req, res, next, bucket) {
     // Possible course of actions:
     // 1) Log request
     // 2) Add client ip address to a ban list
     // 3) Send back more information
     res.set("X-Rate-Limit-Limit", 5);
+    res.set("X-Rate-Limit-Remaining", 0);
     res.status(503).send("System overloaded, try again at a later time.");
   }
 };
+```
+You may also customize the response on requests that are passed through:
+```js
+var options = {
+  "rate": "5/s",
+  "on_allowed": function(req, res, next, bucket) {
+    res.set("X-Rate-Limit-Limit", 5);
+    res.set("X-Rate-Limit-Remaining", bucket.tokens);
+    res.set("X-Rate-Limit-Reset", bucket.rtime);
+  }
+}
 ```
 Throttling can be applied across multiple processes. This requires an external storage mechanism which can be configured as follows:
 ```js
@@ -120,14 +131,14 @@ function ExternalStorage(connection_settings) {
   
 // These methods must be implemented
 ExternalStorage.prototype.get = function(key, callback) {
-  fetch(key, function(entry) {
+  fetch(key, function(bucket) {
     // First argument should be null if no errors occurred
-    callback(null, entry);
+    callback(null, bucket);
   });
 }
   
-ExternalStorage.prototype.set = function(key, value, callback) {
-  save(key, value, function(err) {
+ExternalStorage.prototype.set = function(key, bucket, callback) {
+  save(key, bucket, function(err) {
     // err should be null if no errors occurred
     callback(err); 
   });
@@ -158,15 +169,23 @@ If you prefer tokens to be refilled in fixed intervals, append `:fixed`. E.g `5/
 // callback in both methods must be called with an error (if any) as first argument
 
 function get(key, callback) {
-  fetch(key, function(err, value) {
+  fetch(key, function(err, bucket) {
     if (err) callback(err);
-    else callback(null, value);
+    else callback(null, bucket);
   });
 }
-function set(key, value, callback) {
-  // value will be an object with the following structure:
-  // { "tokens": Number, "accessed": Number }
-  save(key, value, function(err) {
+function set(key, bucket, callback) {
+  // 'bucket' will be an object with the following structure:
+  /*
+    {
+      "size": Number, (max number of tokens this bucket can have)
+      "period": Number, (time in ms it takes to replenish all tokens)
+      "tokens": Number, (current number of tokens)
+      "mtime": Number, (last modification time)
+      "rtime": Number (time until next reset)
+    }
+  */
+  save(key, bucket, function(err) {
     callback(err);
   }
 }
@@ -180,11 +199,18 @@ function(req) {
 }
 ```
 
-`cost`: Number or function used to calculate the cost for a request. It will be called with an [express request object](http://expressjs.com/en/4x/api.html#req). Defaults to 1.
+`cost`: Number or function used to calculate the cost for a request with an [express request object](http://expressjs.com/en/4x/api.html#req). Defaults to 1.
 
-`on_throttled`: A function called when the request is throttled. It will be called with an [express request object](http://expressjs.com/en/4x/api.html#req) and [express response object](http://expressjs.com/en/4x/api.html#res). Defaults to:
+`on_allowed`: A function called when the request is passed through with an [express request object](http://expressjs.com/en/4x/api.html#req), [express response object](http://expressjs.com/en/4x/api.html#res), `next` function and a `bucket` object. Defaults to:
 ```js
-function(req, res) {
+function(req, res, next, bucket) {
+	next();
+}
+``` 
+
+`on_throttled`: A function called when the request is throttled with an [express request object](http://expressjs.com/en/4x/api.html#req), [express response object](http://expressjs.com/en/4x/api.html#res), `next` function and a `bucket` object. Defaults to:
+```js
+function(req, res, next, bucket) {
 	res.status(429).end();
 };
 ```

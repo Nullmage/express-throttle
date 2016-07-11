@@ -8,7 +8,7 @@ var MemoryStore = require("../lib/memory-store");
 var throttle = require("../lib/throttle");
 
 function close_to(value, target, delta = 0.001) {
-	return Math.abs(value - target) < delta;
+	return Math.abs(value - target) <= delta;
 }
 
 function create_app() {
@@ -58,17 +58,22 @@ test("fail to init...", t => {
 	});
 
 	t.test("...with 'key' not being a function", st => {
-		st.throws(() => throttle({ "rate": "1/s", "burst": 5, "key": 1 }), new Error);
+		st.throws(() => throttle({ "rate": "1/s", "key": 1 }), new Error);
 		st.end();
 	});
 
 	t.test("...with 'cost' not being a number or function", st => {
-		st.throws(() => throttle({ "rate": "1/s", "burst": 5, "cost": "5" }), new Error);
+		st.throws(() => throttle({ "rate": "1/s", "cost": "5" }), new Error);
+		st.end();
+	});
+
+	t.test("...with 'on_allowed' not being a function", st => {
+		st.throws(() => throttle({ "rate": "1/s", "on_allowed": "test" }), new Error);
 		st.end();
 	});
 
 	t.test("...with 'on_throttled' not being a function", st => {
-		st.throws(() => throttle({ "rate": "1/s", "burst": 5, "on_throttled": "test" }), new Error);
+		st.throws(() => throttle({ "rate": "1/s", "on_throttled": "test" }), new Error);
 		st.end();
 	});
 });
@@ -96,6 +101,7 @@ test("init with...", t => {
 			"burst": 5,
 			"key": () => true,
 			"cost": () => true,
+			"on_allowed": () => true,
 			"on_throttled": () => true
 		}));
 		
@@ -216,8 +222,8 @@ test("custom store...", t => {
 
 		request(app).get("/").end((err, res) => {
 			st.equal(res.status, 200);
-			store.get(res.body, (err, entry) => {
-				st.ok(entry);
+			store.get(res.body, (err, bucket) => {
+				st.ok(bucket);
 				st.end();
 			});
 		});
@@ -231,8 +237,8 @@ test("respect x-forwarded-for header", t => {
 
 	request(app).get("/").set("x-forwarded-for", proxy_ip).end((err, res) => {
 		t.equal(res.status, 200);
-		store.get(proxy_ip, (err, entry) => {
-			t.ok(entry);
+		store.get(proxy_ip, (err, bucket) => {
+			t.ok(bucket);
 			t.end();
 		});
 	});
@@ -249,8 +255,8 @@ test("custom key function", t => {
 
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 200);
-		store.get(custom_key, (err, entry) => {
-			t.ok(entry);
+		store.get(custom_key, (err, bucket) => {
+			t.ok(bucket);
 			t.end();
 		});
 	});
@@ -266,9 +272,9 @@ test("custom cost value", t => {
 	});
 
 	request(app).get("/").end((err, res) => {
-		store.get(res.body, (err, entry) => {
+		store.get(res.body, (err, bucket) => {
 			t.equal(res.status, 200);
-			t.assert(close_to(entry.tokens, 2));
+			t.assert(close_to(bucket.tokens, 2));
 
 			request(app).get("/").end((err, res) => {
 				t.equal(res.status, 429);
@@ -298,14 +304,14 @@ test("custom cost function passthrough", t => {
 	});
 
 	request(app).get("/yes").end((err, res) => {
-		store.get(res.body, (err, entry) => {
+		store.get(res.body, (err, bucket) => {
 			t.equal(res.status, 200);
-			t.assert(close_to(entry.tokens, 5));
+			t.assert(close_to(bucket.tokens, 5));
 
 			request(app).get("/no").end((err, res) => {
-				store.get(res.body, (err, entry) => {
+				store.get(res.body, (err, bucket) => {
 					t.equal(res.status, 200);
-					t.assert(close_to(entry.tokens, 2));
+					t.assert(close_to(bucket.tokens, 2));
 					
 					request(app).get("/no").end((err, res) => {
 						t.equal(res.status, 429);
@@ -317,18 +323,33 @@ test("custom cost function passthrough", t => {
 	});
 });
 
+test("custom on_allowed function", t => {
+	var app = create_app({
+		"rate": "1/s",
+		"on_allowed": function(req, res, next, bucket) {
+			res.status(201).json(bucket);
+		}
+	});
+
+	request(app).get("/").end((err, res) => {
+		t.equal(res.status, 201);
+		t.assert(close_to(res.body.tokens, 0));
+		t.end();
+	});
+});
+
 test("custom on_throttled function", t => {
 	var app = create_app({
 		"rate": "1/s",
-		"on_throttled": function(req, res) {
-			res.status(503).json("slow down!");
+		"on_throttled": function(req, res, next, bucket) {
+			res.status(503).json(bucket);
 		}
 	});
 
 	request(app).get("/").end(() => true);
 	request(app).get("/").end((err, res) => {
 		t.equal(res.status, 503);
-		t.equal(res.body, "slow down!");
+		t.assert(close_to(res.body.tokens, 0));
 		t.end();
 	});
 });
