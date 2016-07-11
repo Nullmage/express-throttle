@@ -9,11 +9,11 @@ $ npm install express-throttle
 
 ## Implementation
 
-The throttling is done using the canonical [token bucket](https://en.wikipedia.org/wiki/Token_bucket) algorithm, where tokens are "refilled" in a sliding window manner (as opposed to a fixed time interval). This means that if we a set maximum rate of 10 requests / minute, a client will not be able to send 10 requests 0:59, and 10 more 1:01. However, if the client sends 10 requests at 0:30, he will be able to send a new request at 0:36 (since tokens are refilled continuously 1 every 6 seconds).
+The throttling is done using the canonical [token bucket](https://en.wikipedia.org/wiki/Token_bucket) algorithm, where tokens are "refilled" in a sliding window manner by default (can be configured to fixed time windows). This means that if we a set maximum rate of 10 requests / minute, a client will not be able to send 10 requests 0:59, and 10 more 1:01. However, if the client sends 10 requests at 0:30, he will be able to send a new request at 0:36 (since tokens are refilled continuously 1 every 6 seconds).
 
 ## Limitations
 
-By default, throttling data is stored in memory and is thus not shared between multiple processes. If your application is behind a load balancer which distributes traffic amoung several node processes, then throttling will be applied per process, which is generally not what you want (unless you can ensure that a client always hits the same process). It is possible to customize the storage so that the throttling data gets saved to a shared backend (e.g Redis). However, the current implementation contains a race-condition and will likely fail (erroneously allow/block certain requests) under high load. My plan is to address this shortcoming in future versions.
+By default, throttling data is stored in memory and is thus not shared between multiple processes. If your application is behind a load balancer which distributes traffic among several node processes, then throttling will be applied per process, which is generally not what you want (unless you can ensure that a client always hits the same process). It is possible to customize the storage so that the throttling data gets saved to a shared backend (e.g Redis). However, the current implementation contains a race-condition and will likely fail (erroneously allow/block certain requests) under high load. My plan is to address this shortcoming in future versions.
 
 **TL;DR** - Use this package in production at your own risk, beware of the limitations.
 * If you are running node as single process = you should be fine
@@ -32,6 +32,11 @@ var app = express();
 app.post("/search", throttle("5/s"), function(req, res, next) {
   // ...
 });
+
+// ...using fixed time windows instead
+app.post("/search", throttle("5/s:fixed"), function(req, res, next) {
+  // ...
+})
 ```
 Combine it with a burst capacity of 10, meaning that the client can make 10 requests at any rate. The capacity is "refilled" with the specified rate (in this case 5/s).
 ```js
@@ -140,11 +145,13 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 ## Options
 
-`rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *X/Yt*
+`rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *X/Yt(:fixed)*
 
-where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, second, m, min, minute, h, hour, d, day` 
+where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, second, m, min, minute, h, hour, d, day`
 
-`burst`: The number of requests that can be made at any rate. The burst quota is refilled with the specified `rate`.
+If you prefer tokens to be refilled in fixed intervals, append `:fixed`. E.g `5/min:fixed`.
+
+`burst`: The number of requests that can be made at any rate. Defaults to *X* as defined above.
 
 `store`: Custom storage class. Must implement a `get` and `set` method with the following signatures:
 ```js

@@ -42,6 +42,11 @@ test("fail to init...", t => {
 		st.end();
 	});
 
+	t.test("...with invalid rate option", st => {
+		st.throws(() => throttle("10/m:test"), new Error);
+		st.end();
+	});
+
 	t.test("...with empty option object", st => {
 		st.throws(() => throttle({}), new Error);
 		st.end();
@@ -81,6 +86,7 @@ test("init with...", t => {
 		st.doesNotThrow(() => throttle("1/hour"));
 		st.doesNotThrow(() => throttle("1/d"));
 		st.doesNotThrow(() => throttle("1/5day"));
+		st.doesNotThrow(() => throttle("1/m:fixed"));
 		st.end();
 	});
 
@@ -123,6 +129,14 @@ test("passthrough...", t => {
 			request(app).get("/").end(verify(st, true));
 		}, 450);
 	});
+
+	t.test("...2 requests with enough gap @ rate 5/s:fixed", st => {
+		var app = create_app({ "rate": "5/s:fixed", "burst": 1 });
+		request(app).get("/").end(verify(st));
+		setTimeout(() => {
+			request(app).get("/").end(verify(st, true));
+		}, 1050);
+	});
 });
 
 test("throttle...", t => {
@@ -150,6 +164,14 @@ test("throttle...", t => {
 		setTimeout(() => {
 			request(app).get("/").end(verify(st, true));
 		}, 350);
+	});
+
+	t.test("...2 requests without enough gap @ rate 5/s:fixed", st => {
+		var app = create_app({ "rate": "5/s:fixed", "burst": 1 });
+		request(app).get("/").end(() => true);
+		setTimeout(() => {
+			request(app).get("/").end(verify(st, true));
+		}, 950);
 	});
 });
 
