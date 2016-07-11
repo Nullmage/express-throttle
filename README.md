@@ -178,8 +178,6 @@ function set(key, bucket, callback) {
   // 'bucket' will be an object with the following structure:
   /*
     {
-      "size": Number, (max number of tokens this bucket can have)
-      "period": Number, (time in ms it takes to replenish all tokens)
       "tokens": Number, (current number of tokens)
       "mtime": Number, (last modification time)
       "rtime": Number (time until next reset)
