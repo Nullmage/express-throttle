@@ -7,8 +7,8 @@ var request = require("supertest");
 var MemoryStore = require("../lib/memory-store");
 var throttle = require("../lib/throttle");
 
-function close_to(value, target, delta = 0.001) {
-	return Math.abs(value - target) <= delta;
+function close_to(value, target, delta) {
+	return Math.abs(value - target) <= (delta || 0.001);
 }
 
 function create_app() {
