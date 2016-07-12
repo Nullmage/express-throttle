@@ -4,7 +4,7 @@
   "description": "Request throttling middleware for Express",
   "main": "index.js",
   "scripts": {
-    "test": "istanbul cover test/throttle.js",
+    "test": "istanbul cover test/index.js",
     "lint": "eslint lib test"
   },
   "repository": {
