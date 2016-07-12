@@ -7,10 +7,6 @@ var request = require("supertest");
 var MemoryStore = require("../lib/memory-store");
 var throttle = require("../lib/throttle");
 
-function close_to(value, target, delta) {
-	return Math.abs(value - target) <= (delta || 0.001);
-}
-
 function create_app() {
 	var app = express();
 
@@ -178,7 +174,7 @@ tap.test("custom cost value", function(t) {
 	request(app).get("/").end(function(err, res) {
 		store.get(res.body, function(err, bucket) {
 			t.equal(res.status, 200);
-			t.assert(close_to(bucket.tokens, 2));
+			t.equal(Math.round(bucket.tokens), 2);
 
 			request(app).get("/").end(function(err, res) {
 				t.equal(res.status, 429);
@@ -210,12 +206,12 @@ tap.test("custom cost function passthrough", function(t) {
 	request(app).get("/yes").end(function(err, res) {
 		store.get(res.body, function(err, bucket) {
 			t.equal(res.status, 200);
-			t.assert(close_to(bucket.tokens, 5));
+			t.equal(Math.round(bucket.tokens), 5);
 
 			request(app).get("/no").end(function(err, res) {
 				store.get(res.body, function(err, bucket) {
 					t.equal(res.status, 200);
-					t.assert(close_to(bucket.tokens, 2));
+					t.equal(Math.round(bucket.tokens), 2);
 					
 					request(app).get("/no").end(function(err, res) {
 						t.equal(res.status, 429);
@@ -237,7 +233,7 @@ tap.test("custom on_allowed function", function(t) {
 
 	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 201);
-		t.assert(close_to(res.body.tokens, 0));
+		t.equal(Math.round(res.body.tokens), 0);
 		t.end();
 	});
 });
@@ -253,7 +249,7 @@ tap.test("custom on_throttled function", function(t) {
 	request(app).get("/").end(function() {});
 	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 503);
-		t.assert(close_to(res.body.tokens, 0));
+		t.equal(Math.round(res.body.tokens), 0);
 		t.end();
 	});
 });
