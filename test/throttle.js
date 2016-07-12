@@ -21,7 +21,7 @@ function create_app() {
 	return app;
 }
 
-test("passthrough...", t => {
+test("passthrough...", function(t) {
 	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 200);
@@ -32,32 +32,32 @@ test("passthrough...", t => {
 		};
 	}
 
-	t.test("...2 requests with enough gap @ rate 5/s", st => {
+	t.test("...2 requests with enough gap @ rate 5/s", function(st) {
 		var app = create_app({ "rate": "5/s", "burst": 1 });
 		request(app).get("/").end(verify(st));
-		setTimeout(() => {
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 250); // add 50ms to allow some margin for error
 	});
 
-	t.test("...2 requests with enough gap @ rate 5/2s", st => {
+	t.test("...2 requests with enough gap @ rate 5/2s", function(st) {
 		var app = create_app({ "rate": "5/2s", "burst": 1 });
 		request(app).get("/").end(verify(st));
-		setTimeout(() => {
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 450);
 	});
 
-	t.test("...2 requests with enough gap @ rate 5/s:fixed", st => {
+	t.test("...2 requests with enough gap @ rate 5/s:fixed", function(st) {
 		var app = create_app({ "rate": "5/s:fixed", "burst": 1 });
 		request(app).get("/").end(verify(st));
-		setTimeout(() => {
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 1050);
 	});
 });
 
-test("throttle...", t => {
+test("throttle...", function(t) {
 	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 429);
@@ -68,33 +68,33 @@ test("throttle...", t => {
 		};
 	}
 
-	t.test("...2 requests without enough gap @ rate 5/s", st => {
+	t.test("...2 requests without enough gap @ rate 5/s", function(st) {
 		var app = create_app({ "rate": "5/s", "burst": 1 });
-		request(app).get("/").end(() => true);
-		setTimeout(() => {
+		request(app).get("/").end(function() {});
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 150);
 	});
 
-	t.test("...2 requests without enough gap @ rate 5/2s", st => {
+	t.test("...2 requests without enough gap @ rate 5/2s", function(st) {
 		var app = create_app({ "rate": "5/2s", "burst": 1 });
-		request(app).get("/").end(() => true);
-		setTimeout(() => {
+		request(app).get("/").end(function() {});
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 350);
 	});
 
-	t.test("...2 requests without enough gap @ rate 5/s:fixed", st => {
+	t.test("...2 requests without enough gap @ rate 5/s:fixed", function(st) {
 		var app = create_app({ "rate": "5/s:fixed", "burst": 1 });
-		request(app).get("/").end(() => true);
-		setTimeout(() => {
+		request(app).get("/").end(function() {});
+		setTimeout(function() {
 			request(app).get("/").end(verify(st, true));
 		}, 950);
 	});
 });
 
-test("custom store...", t => {
-	t.test("...that fails to retrieve", st => {
+test("custom store...", function(t) {
+	t.test("...that fails to retrieve", function(st) {
 		function FailStore() { }
 		FailStore.prototype.get = function(key, callback) {
 			callback(new Error("failed to get"));
@@ -108,10 +108,10 @@ test("custom store...", t => {
 			res.status(500).end();
 		});
 
-		request(app).get("/").end(() => st.end());
+		request(app).get("/").end(function() { st.end(); });
 	});
 
-	t.test("...that fails to save", st => {
+	t.test("...that fails to save", function(st) {
 		function FailStore() { }
 		FailStore.prototype.get = function(key, callback) { callback(null, {}); };
 		FailStore.prototype.set = function(key, value, callback) {
@@ -125,14 +125,14 @@ test("custom store...", t => {
 			res.status(500).end();
 		});
 
-		request(app).get("/").end(() => st.end());
+		request(app).get("/").end(function() { st.end(); });
 	});
 
-	t.test("...that works", st => {
+	t.test("...that works", function(st) {
 		var store = new MemoryStore();
 		var app = create_app({ "rate": "1/s", "store": store });
 
-		request(app).get("/").end((err, res) => {
+		request(app).get("/").end(function(err, res) {
 			st.equal(res.status, 200);
 			store.get(res.body, (err, bucket) => {
 				st.ok(bucket);
@@ -142,7 +142,7 @@ test("custom store...", t => {
 	});
 });
 
-test("custom key function", t => {
+test("custom key function", function(t) {
 	var store = new MemoryStore();
 	var custom_key = "custom_key";
 	var app = create_app({
@@ -151,7 +151,7 @@ test("custom key function", t => {
 		"key": function() { return custom_key; }
 	});
 
-	request(app).get("/").end((err, res) => {
+	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 200);
 		store.get(custom_key, (err, bucket) => {
 			t.ok(bucket);
@@ -160,7 +160,7 @@ test("custom key function", t => {
 	});
 });
 
-test("custom cost value", t => {
+test("custom cost value", function(t) {
 	var store = new MemoryStore();
 	var app = create_app({
 		"rate": "1/s",
@@ -169,12 +169,12 @@ test("custom cost value", t => {
 		"cost": 3
 	});
 
-	request(app).get("/").end((err, res) => {
+	request(app).get("/").end(function(err, res) {
 		store.get(res.body, (err, bucket) => {
 			t.equal(res.status, 200);
 			t.assert(close_to(bucket.tokens, 2));
 
-			request(app).get("/").end((err, res) => {
+			request(app).get("/").end(function(err, res) {
 				t.equal(res.status, 429);
 				t.end();
 			});
@@ -182,7 +182,7 @@ test("custom cost value", t => {
 	});
 });
 
-test("custom cost function passthrough", t => {
+test("custom cost function passthrough", function(t) {
 	var app = express();
 	var store = new MemoryStore();
 
@@ -201,17 +201,17 @@ test("custom cost function passthrough", t => {
 		res.status(200).json(req.connection.remoteAddress);
 	});
 
-	request(app).get("/yes").end((err, res) => {
+	request(app).get("/yes").end(function(err, res) {
 		store.get(res.body, (err, bucket) => {
 			t.equal(res.status, 200);
 			t.assert(close_to(bucket.tokens, 5));
 
-			request(app).get("/no").end((err, res) => {
+			request(app).get("/no").end(function(err, res) {
 				store.get(res.body, (err, bucket) => {
 					t.equal(res.status, 200);
 					t.assert(close_to(bucket.tokens, 2));
 					
-					request(app).get("/no").end((err, res) => {
+					request(app).get("/no").end(function(err, res) {
 						t.equal(res.status, 429);
 						t.end();
 					});
@@ -221,7 +221,7 @@ test("custom cost function passthrough", t => {
 	});
 });
 
-test("custom on_allowed function", t => {
+test("custom on_allowed function", function(t) {
 	var app = create_app({
 		"rate": "1/s",
 		"on_allowed": function(req, res, next, bucket) {
@@ -229,14 +229,14 @@ test("custom on_allowed function", t => {
 		}
 	});
 
-	request(app).get("/").end((err, res) => {
+	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 201);
 		t.assert(close_to(res.body.tokens, 0));
 		t.end();
 	});
 });
 
-test("custom on_throttled function", t => {
+test("custom on_throttled function", function(t) {
 	var app = create_app({
 		"rate": "1/s",
 		"on_throttled": function(req, res, next, bucket) {
@@ -244,8 +244,8 @@ test("custom on_throttled function", t => {
 		}
 	});
 
-	request(app).get("/").end(() => true);
-	request(app).get("/").end((err, res) => {
+	request(app).get("/").end(function() {});
+	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 503);
 		t.assert(close_to(res.body.tokens, 0));
 		t.end();
