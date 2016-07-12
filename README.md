@@ -49,7 +49,7 @@ app.post("/search", throttle({ "rate": "1/2s", "burst": 5 }), function(req, res,
   // ...
 });
 ```
-By default, throttling is done on a per ip-address basis (respecting the X-Forwarded-For header). This can be configured by providing a custom key-function:
+By default, throttling is done on a per ip-address basis (see [this link](http://expressjs.com/en/api.html#req.ip) about how the ip address is extracted from the request). This can be configured by providing a custom key-function:
 ```js
 var options = {
   "rate": "5/s",
@@ -193,7 +193,7 @@ Defaults to an LRU cache with a maximum of 10000 entries.
 `key`: Function used to identify clients. It will be called with an [express request object](http://expressjs.com/en/4x/api.html#req). Defaults to:
 ```js
 function(req) {
-	return req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+	return req.ip; // http://expressjs.com/en/api.html#req.ip
 }
 ```
 

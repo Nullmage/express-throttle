@@ -142,20 +142,6 @@ test("custom store...", t => {
 	});
 });
 
-test("respect x-forwarded-for header", t => {
-	var store = new MemoryStore();
-	var proxy_ip = "123.123.123.123";
-	var app = create_app({ "rate": "1/s", "store": store });
-
-	request(app).get("/").set("x-forwarded-for", proxy_ip).end((err, res) => {
-		t.equal(res.status, 200);
-		store.get(proxy_ip, (err, bucket) => {
-			t.ok(bucket);
-			t.end();
-		});
-	});
-});
-
 test("custom key function", t => {
 	var store = new MemoryStore();
 	var custom_key = "custom_key";
