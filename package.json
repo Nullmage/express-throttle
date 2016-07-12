@@ -4,7 +4,7 @@
   "description": "Request throttling middleware for Express",
   "main": "index.js",
   "scripts": {
-    "test": "istanbul cover test/index.js",
+    "test": "tap test/*.js --coverage",
     "lint": "eslint lib test"
   },
   "repository": {
@@ -31,8 +31,7 @@
   },
   "devDependencies": {
     "express": "^4.14.0",
-    "istanbul": "^0.4.4",
     "supertest": "^1.2.0",
-    "tape": "^4.6.0"
+    "tap": "^6.1.1"
   }
 }

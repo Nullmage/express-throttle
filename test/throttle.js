@@ -1,6 +1,6 @@
 "use strict";
 
-var test = require("tape");
+var tap = require("tap");
 var express = require("express");
 var request = require("supertest");
 
@@ -21,7 +21,9 @@ function create_app() {
 	return app;
 }
 
-test("passthrough...", function(t) {
+tap.test("passthrough...", function(t) {
+	t.plan(3);
+
 	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 200);
@@ -57,7 +59,9 @@ test("passthrough...", function(t) {
 	});
 });
 
-test("throttle...", function(t) {
+tap.test("throttle...", function(t) {
+	t.plan(3);
+
 	function verify(st, end) {
 		return function(err, res) {
 			st.equal(res.status, 429);
@@ -93,7 +97,9 @@ test("throttle...", function(t) {
 	});
 });
 
-test("custom store...", function(t) {
+tap.test("custom store...", function(t) {
+	t.plan(3);
+	
 	t.test("...that fails to retrieve", function(st) {
 		function FailStore() { }
 		FailStore.prototype.get = function(key, callback) {
@@ -134,7 +140,7 @@ test("custom store...", function(t) {
 
 		request(app).get("/").end(function(err, res) {
 			st.equal(res.status, 200);
-			store.get(res.body, (err, bucket) => {
+			store.get(res.body, function(err, bucket) {
 				st.ok(bucket);
 				st.end();
 			});
@@ -142,7 +148,7 @@ test("custom store...", function(t) {
 	});
 });
 
-test("custom key function", function(t) {
+tap.test("custom key function", function(t) {
 	var store = new MemoryStore();
 	var custom_key = "custom_key";
 	var app = create_app({
@@ -153,14 +159,14 @@ test("custom key function", function(t) {
 
 	request(app).get("/").end(function(err, res) {
 		t.equal(res.status, 200);
-		store.get(custom_key, (err, bucket) => {
+		store.get(custom_key, function(err, bucket) {
 			t.ok(bucket);
 			t.end();
 		});
 	});
 });
 
-test("custom cost value", function(t) {
+tap.test("custom cost value", function(t) {
 	var store = new MemoryStore();
 	var app = create_app({
 		"rate": "1/s",
@@ -170,7 +176,7 @@ test("custom cost value", function(t) {
 	});
 
 	request(app).get("/").end(function(err, res) {
-		store.get(res.body, (err, bucket) => {
+		store.get(res.body, function(err, bucket) {
 			t.equal(res.status, 200);
 			t.assert(close_to(bucket.tokens, 2));
 
@@ -182,7 +188,7 @@ test("custom cost value", function(t) {
 	});
 });
 
-test("custom cost function passthrough", function(t) {
+tap.test("custom cost function passthrough", function(t) {
 	var app = express();
 	var store = new MemoryStore();
 
@@ -202,12 +208,12 @@ test("custom cost function passthrough", function(t) {
 	});
 
 	request(app).get("/yes").end(function(err, res) {
-		store.get(res.body, (err, bucket) => {
+		store.get(res.body, function(err, bucket) {
 			t.equal(res.status, 200);
 			t.assert(close_to(bucket.tokens, 5));
 
 			request(app).get("/no").end(function(err, res) {
-				store.get(res.body, (err, bucket) => {
+				store.get(res.body, function(err, bucket) {
 					t.equal(res.status, 200);
 					t.assert(close_to(bucket.tokens, 2));
 					
@@ -221,7 +227,7 @@ test("custom cost function passthrough", function(t) {
 	});
 });
 
-test("custom on_allowed function", function(t) {
+tap.test("custom on_allowed function", function(t) {
 	var app = create_app({
 		"rate": "1/s",
 		"on_allowed": function(req, res, next, bucket) {
@@ -236,7 +242,7 @@ test("custom on_allowed function", function(t) {
 	});
 });
 
-test("custom on_throttled function", function(t) {
+tap.test("custom on_throttled function", function(t) {
 	var app = create_app({
 		"rate": "1/s",
 		"on_throttled": function(req, res, next, bucket) {
