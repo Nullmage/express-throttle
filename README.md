@@ -1,6 +1,8 @@
 # express-throttle
 Request throttling middleware for Express framework
 
+[![Build Status](https://travis-ci.org/GlurG/express-throttle.svg?branch=master)](https://travis-ci.org/GlurG/express-throttle)
+
 ## Installation
 
 ```bash
