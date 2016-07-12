@@ -1,6 +1,7 @@
 # express-throttle
 Request throttling middleware for Express framework
 
+[![npm version](https://badge.fury.io/js/express-throttle.svg)](https://badge.fury.io/js/express-throttle)
 [![Build Status](https://travis-ci.org/GlurG/express-throttle.svg?branch=master)](https://travis-ci.org/GlurG/express-throttle)
 
 ## Installation
