@@ -116,7 +116,7 @@ tap.test("custom store...", function(t) {
 	t.test("...that fails to save", function(st) {
 		function FailStore() { }
 		FailStore.prototype.get = function(key, callback) { callback(null, {}); };
-		FailStore.prototype.set = function(key, value, callback) {
+		FailStore.prototype.set = function(key, value, lifetime, callback) {
 			callback(new Error("failed to set"));
 		};
 
