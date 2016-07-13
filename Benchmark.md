@@ -63,23 +63,23 @@ Document Path:          /throttle
 Document Length:        0 bytes
 
 Concurrency Level:      1
-Time taken for tests:   39.369 seconds
+Time taken for tests:   40.132 seconds
 Complete requests:      100000
 Failed requests:        0
-Non-2xx responses:      14591
-Total transferred:      10018865 bytes
+Non-2xx responses:      14403
+Total transferred:      10016045 bytes
 HTML transferred:       0 bytes
-Requests per second:    2540.05 [#/sec] (mean)
-Time per request:       0.394 [ms] (mean)
-Time per request:       0.394 [ms] (mean, across all concurrent requests)
-Transfer rate:          248.52 [Kbytes/sec] received
+Requests per second:    2491.76 [#/sec] (mean)
+Time per request:       0.401 [ms] (mean)
+Time per request:       0.401 [ms] (mean, across all concurrent requests)
+Transfer rate:          243.73 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
 Connect:        0    0   0.2      0       1
 Processing:     0    0   0.5      0      12
 Waiting:        0    0   0.4      0      10
-Total:          0    0   0.5      0      12
+Total:          0    0   0.5      0      13
 
 Percentage of the requests served within a certain time (ms)
   50%      0
@@ -90,7 +90,7 @@ Percentage of the requests served within a certain time (ms)
   95%      1
   98%      1
   99%      1
- 100%     12 (longest request)
+ 100%     13 (longest request)
 ```
 
 ## Throttling (default store, fixed windows)
@@ -109,23 +109,23 @@ Document Path:          /throttle-fixed
 Document Length:        0 bytes
 
 Concurrency Level:      1
-Time taken for tests:   39.388 seconds
+Time taken for tests:   40.595 seconds
 Complete requests:      100000
 Failed requests:        0
-Non-2xx responses:      14436
-Total transferred:      10016540 bytes
+Non-2xx responses:      14536
+Total transferred:      10018040 bytes
 HTML transferred:       0 bytes
-Requests per second:    2538.83 [#/sec] (mean)
-Time per request:       0.394 [ms] (mean)
-Time per request:       0.394 [ms] (mean, across all concurrent requests)
-Transfer rate:          248.34 [Kbytes/sec] received
+Requests per second:    2463.34 [#/sec] (mean)
+Time per request:       0.406 [ms] (mean)
+Time per request:       0.406 [ms] (mean, across all concurrent requests)
+Transfer rate:          240.99 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
 Connect:        0    0   0.2      0       1
-Processing:     0    0   0.5      0      13
-Waiting:        0    0   0.4      0      11
-Total:          0    0   0.5      0      13
+Processing:     0    0   0.5      0      12
+Waiting:        0    0   0.5      0      12
+Total:          0    0   0.5      0      12
 
 Percentage of the requests served within a certain time (ms)
   50%      0
@@ -136,5 +136,5 @@ Percentage of the requests served within a certain time (ms)
   95%      1
   98%      1
   99%      1
- 100%     13 (longest request)
+ 100%     12 (longest request)
 ```
