@@ -111,6 +111,8 @@ var options = {
     // 3) Send back more information
     res.set("X-Rate-Limit-Limit", 5);
     res.set("X-Rate-Limit-Remaining", 0);
+    // bucket.etime = expiration time in Unix epoch ms
+    res.set("X-Rate-Limit-Reset", bucket.etime);
     res.status(503).send("System overloaded, try again at a later time.");
   }
 };
@@ -122,7 +124,7 @@ var options = {
   "on_allowed": function(req, res, next, bucket) {
     res.set("X-Rate-Limit-Limit", 5);
     res.set("X-Rate-Limit-Remaining", bucket.tokens);
-    res.set("X-Rate-Limit-Reset", bucket.rtime);
+    res.set("X-Rate-Limit-Reset", bucket.etime);
   }
 }
 ```
@@ -131,7 +133,7 @@ Throttling can be applied across multiple processes. This requires an external s
 function ExternalStorage(connection_settings) {
   // ...
 }
-  
+
 // These methods must be implemented
 ExternalStorage.prototype.get = function(key, callback) {
   fetch(key, function(bucket) {
@@ -140,7 +142,7 @@ ExternalStorage.prototype.get = function(key, callback) {
   });
 }
   
-ExternalStorage.prototype.set = function(key, bucket, callback) {
+ExternalStorage.prototype.set = function(key, bucket, lifetime, callback) {
   save(key, bucket, function(err) {
     // err should be null if no errors occurred
     callback(err); 
@@ -159,7 +161,7 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 ## Options
 
-`rate`: Determines the number of requests allowed within the specified time unit before subsequent requests get throttled. Must be specified according to the following format: *X/Yt(:fixed)*
+`rate`: Determines the number of requests allowed within the specified time before subsequent requests get throttled. Must be specified according to the following format: *X/Yt(:fixed)*
 
 where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, second, m, min, minute, h, hour, d, day`
 
@@ -177,13 +179,15 @@ function get(key, callback) {
     else callback(null, bucket);
   });
 }
-function set(key, bucket, callback) {
+function set(key, bucket, lifetime, callback) {
+  // lifetime (in ms) - same as 'Y' as defined above multiplied by the time unit
   // 'bucket' will be an object with the following structure:
   /*
     {
       "tokens": Number, (current number of tokens)
+      "ctime": Number, (creation time)
       "mtime": Number, (last modification time)
-      "rtime": Number (time until next reset)
+      "etime": Number (expiration time)
     }
   */
   save(key, bucket, function(err) {
