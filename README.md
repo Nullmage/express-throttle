@@ -31,32 +31,32 @@ var throttle = require("express-throttle");
   
 var app = express();
   
-// Throttle to 5 reqs/s
-app.post("/search", throttle("5/s"), function(req, res, next) {
+// Allow 5 requests at any rate with an average rate of 5/s
+app.post("/search", throttle({ "rate": "5/s" }), function(req, res, next) {
   // ...
 });
 
-// ...using fixed time windows instead
-app.post("/search", throttle("5/s:fixed"), function(req, res, next) {
+// Allow 5 requests at any rate during a fixed time window of 1 sec 
+app.post("/search", throttle({ "burst": 5, "period": "1s" }), function(req, res, next) {
   // ...
-})
+});
 ```
-Combine it with a burst capacity of 10, meaning that the client can make 10 requests at any rate. The capacity is "refilled" with the specified rate (in this case 5/s).
+Combine it with a burst capacity of 10, meaning that the client can make 10 requests at any rate. The burst capacity is "refilled" with the specified rate (in this case 5/s).
 ```js
-app.post("/search", throttle({ "rate": "5/s", "burst": 10 }), function(req, res, next) {
+app.post("/search", throttle({ "burst": 10, "rate": "5/s" }), function(req, res, next) {
   // ...
 });
   
 // "Half" requests are supported as well (1 request every other second)
-app.post("/search", throttle({ "rate": "1/2s", "burst": 5 }), function(req, res, next) {
+app.post("/search", throttle({ "burst": 5, "rate": "1/2s" }), function(req, res, next) {
   // ...
 });
 ```
 By default, throttling is done on a per ip-address basis (see [this link](http://expressjs.com/en/api.html#req.ip) about how the ip address is extracted from the request). This can be configured by providing a custom key-function:
 ```js
 var options = {
-  "rate": "5/s",
   "burst": 10,
+  "rate": "5/s",
   "key": function(req) {
     return req.session.username;
   }
@@ -71,8 +71,8 @@ The "cost" per request can also be customized, making it possible to, for exampl
 var whitelist = ["ip-1", "ip-2", ...];
   
 var options = {
-  "rate": "5/s",
   "burst": 10,
+  "rate": "5/s",
   "cost": function(req) {
     var ip_address = req.connection.remoteAddress;
       
@@ -103,7 +103,8 @@ app.post("/expensive", throttle(options), function(req, res, next) {
 Throttled requests will simply be responded with an empty 429 response. This can be overridden:
 ```js
 var options = {
-  "rate": "5/s",
+  "burst": 5
+  "period": "1min",
   "on_throttled": function(req, res, next, bucket) {
     // Possible course of actions:
     // 1) Log request
@@ -111,7 +112,8 @@ var options = {
     // 3) Send back more information
     res.set("X-Rate-Limit-Limit", 5);
     res.set("X-Rate-Limit-Remaining", 0);
-    // bucket.etime = expiration time in Unix epoch ms
+    // bucket.etime = expiration time in Unix epoch ms, only available
+    // for fixed time windows
     res.set("X-Rate-Limit-Reset", bucket.etime);
     res.status(503).send("System overloaded, try again at a later time.");
   }
@@ -124,7 +126,6 @@ var options = {
   "on_allowed": function(req, res, next, bucket) {
     res.set("X-Rate-Limit-Limit", 5);
     res.set("X-Rate-Limit-Remaining", bucket.tokens);
-    res.set("X-Rate-Limit-Reset", bucket.etime);
   }
 }
 ```
@@ -161,13 +162,17 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 ## Options
 
-`rate`: Determines the number of requests allowed within the specified time before subsequent requests get throttled. Must be specified according to the following format: *X/Yt(:fixed)*
+`burst`: The number of requests that can be made at any rate. Defaults to *X* as defined below for rolling windows.
 
-where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, second, m, min, minute, h, hour, d, day`
+`rate`: Determines the rate at which the burst quota is "refilled". This will control the average number of requests per time unit. Must be specified according to the following format: *X/Yt*
 
-If you prefer tokens to be refilled in fixed intervals, append `:fixed`. E.g `5/min:fixed`.
+where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, m, min, h, hour, d, day`
 
-`burst`: The number of requests that can be made at any rate. Defaults to *X* as defined above.
+E.g `5/s, 180/15min, 1000/d` 
+
+`period`: The duration of the time window after which the entire burst quota is refilled. Must be specified according to the following format: *Y/t*, where *Y* and *t* are defined as above.
+
+E.g `5s, 15min, 1000d`
 
 `store`: Custom storage class. Must implement a `get` and `set` method with the following signatures:
 ```js
@@ -179,15 +184,13 @@ function get(key, callback) {
     else callback(null, bucket);
   });
 }
-function set(key, bucket, lifetime, callback) {
-  // lifetime (in ms) - same as 'Y' as defined above multiplied by the time unit
+function set(key, bucket, callback) {
   // 'bucket' will be an object with the following structure:
   /*
     {
       "tokens": Number, (current number of tokens)
-      "ctime": Number, (creation time)
       "mtime": Number, (last modification time)
-      "etime": Number (expiration time)
+      "etime": Number (expiration time, only available for fixed time windows)
     }
   */
   save(key, bucket, function(err) {
@@ -196,6 +199,8 @@ function set(key, bucket, lifetime, callback) {
 }
 ```
 Defaults to an LRU cache with a maximum of 10000 entries.
+
+`store_size`: Determines the maximum number of entries for the default in-memory LRU cache. 0 indicates no limit, **not recommended**, since entries in the cache are not expired / cleaned up / garbage collected.
 
 `key`: Function used to identify clients. It will be called with an [express request object](http://expressjs.com/en/4x/api.html#req). Defaults to:
 ```js
