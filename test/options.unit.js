@@ -1,98 +1,222 @@
 "use strict";
 
 var tap = require("tap");
-var throttle = require("../lib/throttle");
+var options = require("../lib/options");
 
-tap.test("fail to init...", function(t) {
-	t.test("...without options", function(st) {
-		st.throws(throttle);
+function wrap(opts) {
+	return function() {
+		options.parse(opts);
+	}
+}
+
+tap.test("no options", function(t) {
+	t.throws(wrap());
+	t.end();
+});
+
+tap.test("options not being an object", function(t) {
+	t.throws(wrap(5));
+	t.end();
+});
+
+tap.test("neither rate nor period specified", function(t) {
+	t.throws(wrap({}));
+	t.end();
+});
+
+tap.test("invalid rate...", function(t) {
+	tap.test("not being a string", function(st) {
+		st.throws(wrap({ "rate": 5 }));
 		st.end();
 	});
 
-	t.test("...with first argument not being a string or object", function(st) {
-		st.throws(function() { throttle(5); });
+	t.test("amount not being a number", function(st) {
+		st.throws(wrap({ "rate": "a/m" }));
 		st.end();
 	});
 
-	t.test("...with invalid rate string (float not allowed)", function(st) {
-		st.throws(function() { throttle("1.0/h"); });
+	t.test("float amount not allowed", function(st) {
+		st.throws(wrap({ "rate": "1.0/m" }));
 		st.end();
 	});
 
-	t.test("...with invalid rate string (float not allowed)", function(st) {
-		st.throws(function() { throttle("1/2.0h"); });
+	t.test("negative amount not allowed", function(st) {
+		st.throws(wrap({ "rate": "-1/m" }));
 		st.end();
 	});
 
-	t.test("...with invalid rate option", function(st) {
-		st.throws(function() { throttle("10/m:test"); });
+	t.test("invalid period", function(st) {
+		st.throws(wrap({ "rate": "1/a" }));
 		st.end();
 	});
 
-	t.test("...with empty option object", function(st) {
-		st.throws(function() { throttle({}); });
+	t.test("case sensitive time unit", function(st) {
+		st.throws(wrap({ "rate": "1/M" }));
 		st.end();
 	});
 
-	t.test("...with 'burst' not being a number", function(st) {
-		st.throws(function() { throttle({ "rate": "1/s", "burst": "5" }); });
+	t.test("float period not allowed", function(st) {
+		st.throws(wrap({ "rate": "1/2.0m" }));
 		st.end();
 	});
 
-	t.test("...with 'key' not being a function", function(st) {
-		st.throws(function() { throttle({ "rate": "1/s", "key": 1 }); });
+	t.test("negative period not allowed", function(st) {
+		st.throws(wrap({ "rate": "1/-2m" }));
 		st.end();
 	});
 
-	t.test("...with 'cost' not being a number or function", function(st) {
-		st.throws(function() { throttle({ "rate": "1/s", "cost": "5" }); });
+	t.test("period can't be 0", function(st) {
+		st.throws(wrap({ "rate": "1/0m" }));
+		st.end();
+	});
+	
+	t.end();
+});
+
+tap.test("valid rate...", function(t) {
+	t.test("with only time unit", function(st) {
+		st.doesNotThrow(wrap({ "rate": "1/s" }));
 		st.end();
 	});
 
-	t.test("...with 'on_allowed' not being a function", function(st) {
-		st.throws(function() { throttle({ "rate": "1/s", "on_allowed": "test" }); });
-		st.end();
-	});
-
-	t.test("...with 'on_throttled' not being a function", function(st) {
-		st.throws(function() { throttle({ "rate": "1/s", "on_throttled": "test" }); });
+	t.test("with denominator + time unit", function(st) {
+		st.doesNotThrow(wrap({ "rate": "3/2s" }));
 		st.end();
 	});
 
 	t.end();
 });
 
-tap.test("init with...", function(t) {
-	t.test("...rate", function(st) {
-		st.doesNotThrow(function() { throttle("1/200ms"); });
-		st.doesNotThrow(function() { throttle("1/s"); });
-		st.doesNotThrow(function() { throttle("1/2sec"); });
-		st.doesNotThrow(function() { throttle("1/second"); });
-		st.doesNotThrow(function() { throttle("1/m"); });
-		st.doesNotThrow(function() { throttle("1/3min"); });
-		st.doesNotThrow(function() { throttle("1/minute"); });
-		st.doesNotThrow(function() { throttle("1/4h"); });
-		st.doesNotThrow(function() { throttle("1/hour"); });
-		st.doesNotThrow(function() { throttle("1/d"); });
-		st.doesNotThrow(function() { throttle("1/5day"); });
-		st.doesNotThrow(function() { throttle("1/m:fixed"); });
+tap.test("rate + burst not being a number", function(t) {
+	t.throws(wrap({ "rate": "1/s", "burst": "5" }));
+	t.end();
+});
+
+tap.test("burst defaulting to rate.amount", function(t) {
+	var burst = options.parse({ "rate": "5/s" }).burst;
+	t.equal(burst, 5);
+	t.end();
+});
+
+tap.test("invalid period...", function(t) {
+	t.test("not being a string", function(st) {
+		st.throws(wrap({ "period": 10 }));
 		st.end();
 	});
 
-	t.test("...options object", function(st) {
-		st.doesNotThrow(function() {
-			throttle({
-				"rate": "1/s",
-				"burst": 5,
-				"key": function() {},
-				"cost": function() {},
-				"on_allowed": function() {},
-				"on_throttled": function() {}
-			});
-		});
-		
+	t.test("amount not being a number", function(st) {
+		st.throws(wrap({ "period": "am" }));
 		st.end();
 	});
+
+	t.test("case sensitive time unit", function(st) {
+		st.throws(wrap({ "period": "1M" }));
+		st.end();
+	});
+
+	t.test("float amount not allowed", function(st) {
+		st.throws(wrap({ "period": "1.0m" }));
+		st.end();
+	});
+
+	t.test("negative amount not allowed", function(st) {
+		st.throws(wrap({ "period": "-1m" }));
+		st.end();
+	});
+
+	t.test("amount can't be 0", function(st) {
+		st.throws(wrap({ "period": "0m" }));
+		st.end();
+	});
+
+	t.end();
+});
+
+tap.test("valid period...", function(t) {
+	t.test("with only time unit", function(st) {
+		st.doesNotThrow(wrap({ "burst": 1, "period": "s" }));
+		st.end();
+	});
+
+	t.test("with amount + time unit", function(st) {
+		st.doesNotThrow(wrap({ "burst": 1, "period": "2s" }));
+		st.end();
+	});
+
+	t.end();
+});
+
+tap.test("only period specified", function(t) {
+	t.throws(wrap({ "period": "10s" }));
+	t.end();
+});
+
+tap.test("period + burst not being a number", function(t) {
+	t.throws(wrap({ "period": "10s", "burst": "5" }));
+	t.end();
+});
+
+tap.test("key not being a function", function(t) {
+	t.throws(wrap({ "rate": "1/s", "key": "ip" }));
+	t.end();
+});
+
+tap.test("cost not being a number or function", function(t) {
+	t.throws(wrap({ "rate": "1/s", "cost": "5" }));
+	t.end();
+});
+
+tap.test("default cost = 1", function(t) {
+	var cost = options.parse({ "rate": "1/s" }).cost();
+	t.equal(cost, 1);
+	t.end();
+});
+
+tap.test("on_allowed not being a function", function(t) {
+	t.throws(wrap({ "rate": "1/s", "on_allowed": 5 }));
+	t.end();
+});
+
+tap.test("on_throttled not being a function", function(t) {
+	t.throws(wrap({ "rate": "1/s", "on_throttled": 5 }));
+	t.end();
+});
+
+tap.test("init with all time units", function(t) {
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100ms" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100s" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100sec" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100m" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100min" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100h" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100hour" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100d" }));
+	t.doesNotThrow(wrap({ "burst": 1, "period": "100day" }));
+	t.end();
+});
+
+tap.test("init with everything (rolling)", function(t) {
+	t.doesNotThrow(wrap({
+		"rate": "5/m",
+		"burst": 10,
+		"key": function() {},
+		"cost": function() {},
+		"on_allowed": function() {},
+		"on_throttled": function() {}
+	}));
+
+	t.end();
+});
+
+tap.test("init with everything (fixed)", function(t) {
+	t.doesNotThrow(wrap({
+		"burst": 10,
+		"period": "5m",
+		"key": function() {},
+		"cost": function() {},
+		"on_allowed": function() {},
+		"on_throttled": function() {}
+	}));
 
 	t.end();
 });
