@@ -219,7 +219,3 @@ function(req, res, next, bucket) {
 	res.status(429).end();
 };
 ```
-
-## Benchmark
-
-Refer to [this](https://github.com/GlurG/express-throttle/blob/master/Benchmark.md) document for ballparks / guidelines of the performance penalty this middleware will incur.
