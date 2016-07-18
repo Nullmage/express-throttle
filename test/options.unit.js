@@ -24,6 +24,11 @@ tap.test("neither rate nor period specified", function(t) {
 	t.end();
 });
 
+tap.test("store_size not being a number", function(t) {
+	t.throws(wrap({ "store_size": "5" }));
+	t.end();
+});
+
 tap.test("invalid rate...", function(t) {
 	tap.test("not being a string", function(st) {
 		st.throws(wrap({ "rate": 5 }));
@@ -197,8 +202,9 @@ tap.test("init with all time units", function(t) {
 
 tap.test("init with everything (rolling)", function(t) {
 	t.doesNotThrow(wrap({
-		"rate": "5/m",
 		"burst": 10,
+		"rate": "5/m",
+		"store_size": 100,
 		"key": function() {},
 		"cost": function() {},
 		"on_allowed": function() {},
@@ -212,6 +218,7 @@ tap.test("init with everything (fixed)", function(t) {
 	t.doesNotThrow(wrap({
 		"burst": 10,
 		"period": "5m",
+		"store_size": 100,
 		"key": function() {},
 		"cost": function() {},
 		"on_allowed": function() {},
