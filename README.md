@@ -28,15 +28,15 @@ By default, throttling data is stored in memory and is thus not shared between m
 ```js
 var express = require("express");
 var throttle = require("express-throttle");
-  
+
 var app = express();
-  
+
 // Allow 5 requests at any rate with an average rate of 5/s
 app.post("/search", throttle({ "rate": "5/s" }), function(req, res, next) {
   // ...
 });
 
-// Allow 5 requests at any rate during a fixed time window of 1 sec 
+// Allow 5 requests at any rate during a fixed time window of 1 sec
 app.post("/search", throttle({ "burst": 5, "period": "1s" }), function(req, res, next) {
   // ...
 });
@@ -46,7 +46,7 @@ Combine it with a burst capacity of 10, meaning that the client can make 10 requ
 app.post("/search", throttle({ "burst": 10, "rate": "5/s" }), function(req, res, next) {
   // ...
 });
-  
+
 // "Half" requests are supported as well (1 request every other second)
 app.post("/search", throttle({ "burst": 5, "rate": "1/2s" }), function(req, res, next) {
   // ...
@@ -69,13 +69,13 @@ app.post("/search", throttle(options), function(req, res, next) {
 The "cost" per request can also be customized, making it possible to, for example whitelist certain requests:
 ```js
 var whitelist = ["ip-1", "ip-2", ...];
-  
+
 var options = {
   "burst": 10,
   "rate": "5/s",
   "cost": function(req) {
     var ip_address = req.connection.remoteAddress;
-      
+
     if (whitelist.indexOf(ip_address) >= 0) {
       return 0;
     } else if (req.session.is_privileged_user) {
@@ -85,7 +85,7 @@ var options = {
     }
   }
 };
-  
+
 app.post("/search", throttle(options), function(req, res, next) {
   // ...
 });
@@ -142,19 +142,19 @@ ExternalStorage.prototype.get = function(key, callback) {
     callback(null, bucket);
   });
 }
-  
+
 ExternalStorage.prototype.set = function(key, bucket, lifetime, callback) {
   save(key, bucket, function(err) {
     // err should be null if no errors occurred
-    callback(err); 
+    callback(err);
   });
 }
-  
+
 var options = {
   "rate": "5/s",
   "store": new ExternalStorage()
 }
-  
+
 app.post("/search", throttle(options), function(req, res, next) {
   // ...
 });
@@ -168,7 +168,7 @@ app.post("/search", throttle(options), function(req, res, next) {
 
 where *X* and *Y* are integers and *t* is the time unit which can be any of the following: `ms, s, sec, m, min, h, hour, d, day`
 
-E.g `5/s, 180/15min, 1000/d` 
+E.g `5/s, 180/15min, 1000/d`
 
 `period`: The duration of the time window after which the entire burst quota is refilled. Must be specified according to the following format: *Y/t*, where *Y* and *t* are defined as above.
 
@@ -211,12 +211,22 @@ function(req) {
 
 `cost`: Number or function used to calculate the cost for a request with an [express request object](http://expressjs.com/en/4x/api.html#req). Defaults to 1.
 
+`auto_drain`: A boolean to control if tokens are consumed before (`true`) or during (`false`) a request. Defaults to `true`.
+
+When it is set to `false`, you need to  explicitly invoke `req.drain()` to consume tokens. The method can be invoked multiple times, but it only executed once per request. Multiple configurations will stack in `req.drain()` automatically.
+
+```js
+function(req, res, next) {
+	req.drain();
+}
+```
+
 `on_allowed`: A function called when the request is passed through with an [express request object](http://expressjs.com/en/4x/api.html#req), [express response object](http://expressjs.com/en/4x/api.html#res), `next` function and a `bucket` object. Defaults to:
 ```js
 function(req, res, next, bucket) {
 	next();
 }
-``` 
+```
 
 `on_throttled`: A function called when the request is throttled with an [express request object](http://expressjs.com/en/4x/api.html#req), [express response object](http://expressjs.com/en/4x/api.html#res), `next` function and a `bucket` object. Defaults to:
 ```js

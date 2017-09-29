@@ -9,7 +9,7 @@ var throttle = require("../lib/throttle");
 
 function create_app(options) {
 	var app = express();
-	
+
 	options.on_allowed = function(req, res, next, bucket) {
 		res.status(200).json(bucket);
 	}
@@ -21,7 +21,9 @@ function create_app(options) {
 
 function response(t, status, tokens, callback) {
 	return function(err, res) {
-		t.equal(res.status, status);
+		if (status) {
+			t.equal(res.status, status);
+		}
 
 		if (tokens) {
 			t.equal(Math.round(res.body.tokens), tokens);
@@ -172,6 +174,117 @@ tap.test("custom cost function", function(t) {
 	}));
 });
 
+tap.test("disable auto_drain", function(t) {
+	var app = create_app({
+		"rate": "1/s",
+		"auto_drain": false
+	});
+
+	app.get("/", function(req, res) {
+		res.status(200).end();
+	});
+
+	request(app).get("/").end(response(t, 200, 1, function() {
+		request(app).get("/").end(response(t, 200, 1, function() {
+			request(app).get("/").end(response(t, 200, 1));
+		}));
+	}));
+});
+
+tap.test("drain tokens", function(t) {
+	var app = create_app({
+		"rate": "1/s",
+		"auto_drain": false,
+	});
+
+	app.get("/:param", function(req, res) {
+		if(req.path == "/drain") {
+			req.drain();
+		}
+
+		res.status(200).end();
+	});
+
+	request(app).get("/").end(response(t, 200, 1, function() {
+		request(app).get("/drain").end(response(t, 200, 1, function() {
+			request(app).get("/").end(response(t, 429));
+		}));
+	}));
+});
+
+tap.test("drain tokens only once", function(t) {
+	var app = create_app({
+		"rate": "2/s",
+		"auto_drain": false,
+	});
+
+	app.get("/", function(req, res) {
+		req.drain();
+		req.drain(); // It has no effect
+		res.status(200).end();
+	});
+
+	request(app).get("/").end(response(t, 200, 2, function() {
+		request(app).get("/").end(response(t, 200, 1));
+	}));
+});
+
+tap.test("drain tokens only once again", function(t) {
+	var app = create_app({
+		"rate": "2/s",
+		"auto_drain": true,
+	});
+
+	app.get("/", function(req, res) {
+		req.drain(); // It has no effect
+		res.status(200).end();
+	});
+
+	request(app).get("/").end(response(t, 200, 1, function() {
+		request(app).get("/").end(response(t, 200, 0));
+	}));
+});
+
+tap.test("failed to drain tokens", function(t) {
+	var err = new Error('It is an error!');
+	var store = {
+		get: function(key, callback) {
+			callback(null, { tokens: 1, mtime: Date.now() });
+		},
+		set: function(key, bucket, callback) {
+			if(bucket.tokens == 0) {
+				callback(err);
+			} else {
+				callback();
+			}
+		}
+	};
+
+	var app = create_app({
+		"rate": "1/s",
+		"store": store,
+		"auto_drain": false
+	});
+
+	app.get("/", function(req, res) { // eslint-disable-line no-unused-vars
+		t.throws(req.drain, err);
+	});
+
+	request(app).get("/").end(response(t));
+});
+
+tap.test("mixed auto_drain", function(t) {
+	var app = express();
+	app.get("/",
+		throttle({ "rate": "1/s", "auto_drain": true }),
+		throttle({ "rate": "1/s", "auto_drain": false }),
+		function(req, res, next) { // eslint-disable-line no-unused-vars
+			res.status(200).end();
+	});
+
+	request(app).get("/").end(response(t, 200, 0));
+});
+
 tap.test("default on_allowed function", function(t) {
 	var app = express();
 	app.get("/", throttle({ "burst": 1, "rate": "1/s" }),
@@ -179,7 +292,7 @@ tap.test("default on_allowed function", function(t) {
 		res.status(200).end();
 	});
 
-	request(app).get("/").end(response(t, 200, 0))
+	request(app).get("/").end(response(t, 200, 0));
 });
 
 tap.test("custom on_throttled function", function(t) {

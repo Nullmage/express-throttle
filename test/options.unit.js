@@ -74,7 +74,7 @@ tap.test("invalid rate...", function(t) {
 		st.throws(wrap({ "rate": "1/0m" }));
 		st.end();
 	});
-	
+
 	t.end();
 });
 
@@ -174,6 +174,31 @@ tap.test("cost not being a number or function", function(t) {
 tap.test("default cost = 1", function(t) {
 	var cost = options.parse({ "rate": "1/s" }).cost();
 	t.equal(cost, 1);
+	t.end();
+});
+
+tap.test("valid auto_drain...", function(t) {
+	t.test("when it is true", function(st) {
+		st.doesNotThrow(wrap({ "rate": "1/s", "auto_drain": true }));
+		st.end();
+	});
+
+	t.test("when it is false", function(st) {
+		st.doesNotThrow(wrap({ "rate": "1/s", "auto_drain": false }));
+		st.end();
+	});
+
+	t.end();
+});
+
+tap.test("auto_drain not being a boolean", function(t) {
+	t.throws(wrap({ "rate": "1/s", "auto_drain": null }));
+	t.end();
+});
+
+tap.test("default auto_drain = true", function(t) {
+	var auto_drain = options.parse({ "rate": "1/s" }).auto_drain;
+	t.equal(auto_drain, true);
 	t.end();
 });
 
